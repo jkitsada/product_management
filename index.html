@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Product Management Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="container">
+        <h1>Inventory Overview</h1>
+        <p class="subtitle">
+          ตรวจสอบยอดสินค้าคงเหลือและสถานะสต็อกของระบบได้ที่นี่
+        </p>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="summary-grid" id="summaryGrid"></section>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>รายการสินค้าใกล้หมด</h2>
+          <span class="badge" id="lowStockCount">0 รายการ</span>
+        </div>
+        <div class="card-table">
+          <table>
+            <thead>
+              <tr>
+                <th>สินค้า</th>
+                <th>หมวดหมู่</th>
+                <th>คงเหลือ</th>
+                <th>หน่วย</th>
+              </tr>
+            </thead>
+            <tbody id="lowStockTable">
+              <tr>
+                <td colspan="4" class="placeholder">กำลังโหลดข้อมูล...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>ภาพรวมตามหมวดหมู่</h2>
+        </div>
+        <div class="category-grid" id="categoryGrid"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <small>Updated just now • ข้อมูลตัวอย่างสำหรับระบบ Product Management</small>
+      </div>
+    </footer>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
