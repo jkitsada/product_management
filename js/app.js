@@ -1,21 +1,43 @@
-import { products } from "./data.js";
+import { products as fallbackProducts } from "./data.js";
 
 const summaryGrid = document.querySelector("#summaryGrid");
 const lowStockTable = document.querySelector("#lowStockTable");
 const lowStockCount = document.querySelector("#lowStockCount");
 const categoryGrid = document.querySelector("#categoryGrid");
+const footerNote = document.querySelector(".footer small");
+
+const loadingRow = `
+  <tr>
+    <td colspan="4" class="placeholder">กำลังโหลดข้อมูลจากฐานข้อมูล...</td>
+  </tr>
+`;
 
 const formatNumber = (value) =>
-  value.toLocaleString("th-TH", { maximumFractionDigits: 0 });
+  Number(value).toLocaleString("th-TH", { maximumFractionDigits: 0 });
 
 const formatCurrency = (value) =>
-  value.toLocaleString("th-TH", {
+  Number(value).toLocaleString("th-TH", {
     style: "currency",
     currency: "THB",
     maximumFractionDigits: 0,
   });
 
-const buildSummaryCards = () => {
+const updateFooterStatus = (source) => {
+  if (!footerNote) {
+    return;
+  }
+
+  if (source === "remote") {
+    footerNote.textContent = `Updated ${new Date().toLocaleString(
+      "th-TH"
+    )} • ข้อมูลจากฐานข้อมูล Neon`;
+  } else {
+    footerNote.textContent =
+      "ใช้ข้อมูลตัวอย่างในเครื่อง • ตรวจสอบการเชื่อมต่อฐานข้อมูล";
+  }
+};
+
+const buildSummaryCards = (products) => {
   const totalProducts = products.length;
   const totalUnits = products.reduce((sum, item) => sum + item.stock, 0);
   const totalValue = products.reduce(
@@ -65,6 +87,11 @@ const buildSummaryCards = () => {
 };
 
 const renderLowStockTable = (items) => {
+  if (!Array.isArray(items)) {
+    lowStockTable.innerHTML = loadingRow;
+    return;
+  }
+
   if (items.length === 0) {
     lowStockTable.innerHTML = `
       <tr>
@@ -94,7 +121,7 @@ const renderLowStockTable = (items) => {
   lowStockCount.textContent = `${formatNumber(items.length)} รายการ`;
 };
 
-const renderCategoryCards = () => {
+const renderCategoryCards = (products) => {
   const categories = products.reduce((acc, item) => {
     const category = acc.get(item.category) || {
       items: 0,
@@ -128,10 +155,35 @@ const renderCategoryCards = () => {
   categoryGrid.innerHTML = markup;
 };
 
-const bootstrap = () => {
-  const lowStockItems = buildSummaryCards();
+const loadProducts = async () => {
+  try {
+    const response = await fetch("/api/products");
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    const payload = await response.json();
+    if (payload.fallback || !Array.isArray(payload.products)) {
+      console.warn("Falling back to local sample data.");
+      return { source: "fallback", products: fallbackProducts };
+    }
+
+    return { source: "remote", products: payload.products };
+  } catch (error) {
+    console.error("Unable to fetch products from API:", error);
+    return { source: "fallback", products: fallbackProducts };
+  }
+};
+
+const bootstrap = async () => {
+  lowStockTable.innerHTML = loadingRow;
+
+  const { products, source } = await loadProducts();
+  updateFooterStatus(source);
+
+  const lowStockItems = buildSummaryCards(products);
   renderLowStockTable(lowStockItems);
-  renderCategoryCards();
+  renderCategoryCards(products);
 };
 
 bootstrap();
