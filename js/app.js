@@ -1,26 +1,85 @@
 import { products as fallbackProducts } from "./data.js";
 
+const state = {
+  source: "loading",
+  products: [],
+  editingId: null,
+};
+
 const summaryGrid = document.querySelector("#summaryGrid");
 const lowStockTable = document.querySelector("#lowStockTable");
 const lowStockCount = document.querySelector("#lowStockCount");
+const allProductsTable = document.querySelector("#allProductsTable");
+const productCountBadge = document.querySelector("#productCount");
 const categoryGrid = document.querySelector("#categoryGrid");
 const footerNote = document.querySelector(".footer small");
+const dataSourceIndicator = document.querySelector("#dataSourceIndicator");
 
-const loadingRow = `
-  <tr>
-    <td colspan="4" class="placeholder">กำลังโหลดข้อมูลจากฐานข้อมูล...</td>
-  </tr>
-`;
+const productForm = document.querySelector("#productForm");
+const productIdInput = document.querySelector("#productId");
+const productNameInput = document.querySelector("#productName");
+const productCategoryInput = document.querySelector("#productCategory");
+const productStockInput = document.querySelector("#productStock");
+const productUnitInput = document.querySelector("#productUnit");
+const productReorderInput = document.querySelector("#productReorder");
+const productPriceInput = document.querySelector("#productPrice");
+const submitButton = document.querySelector("#submitButton");
+const cancelEditButton = document.querySelector("#cancelEditButton");
+const formHeading = document.querySelector("#formHeading");
+const managementNotice = document.querySelector("#managementNotice");
+const formStatus = document.querySelector("#formStatus");
+
+const templates = {
+  lowStockLoading: `
+    <tr>
+      <td colspan="4" class="placeholder">กำลังโหลดข้อมูลจากฐานข้อมูล...</td>
+    </tr>
+  `,
+  productsLoading: `
+    <tr>
+      <td colspan="7" class="placeholder">กำลังโหลดรายการสินค้า...</td>
+    </tr>
+  `,
+};
+
+const DEFAULT_NOTICE =
+  "กรอกข้อมูลสินค้าแล้วกดเพิ่มเพื่อบันทึกลงฐานข้อมูล";
 
 const formatNumber = (value) =>
   Number(value).toLocaleString("th-TH", { maximumFractionDigits: 0 });
 
-const formatCurrency = (value) =>
-  Number(value).toLocaleString("th-TH", {
+const formatCurrency = (value) => {
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    return "-";
+  }
+  return numeric.toLocaleString("th-TH", {
     style: "currency",
     currency: "THB",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: numeric % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
   });
+};
+
+const updateDataSourceIndicator = (source) => {
+  if (!dataSourceIndicator) {
+    return;
+  }
+
+  dataSourceIndicator.dataset.state = source;
+
+  switch (source) {
+    case "remote":
+      dataSourceIndicator.textContent = "เชื่อมต่อฐานข้อมูล Neon แล้ว";
+      break;
+    case "fallback":
+      dataSourceIndicator.textContent = "โหมดอ่านอย่างเดียว (ใช้ข้อมูลตัวอย่าง)";
+      break;
+    default:
+      dataSourceIndicator.textContent = "กำลังเชื่อมต่อ...";
+      break;
+  }
+};
 
 const updateFooterStatus = (source) => {
   if (!footerNote) {
@@ -31,21 +90,81 @@ const updateFooterStatus = (source) => {
     footerNote.textContent = `Updated ${new Date().toLocaleString(
       "th-TH"
     )} • ข้อมูลจากฐานข้อมูล Neon`;
-  } else {
+  } else if (source === "fallback") {
     footerNote.textContent =
       "ใช้ข้อมูลตัวอย่างในเครื่อง • ตรวจสอบการเชื่อมต่อฐานข้อมูล";
+  } else {
+    footerNote.textContent = "กำลังดึงข้อมูลล่าสุดจากฐานข้อมูล...";
   }
+};
+
+const setFormMessage = (message = "", type = "neutral") => {
+  if (!formStatus) {
+    return;
+  }
+  formStatus.textContent = message;
+  formStatus.classList.remove("success", "error");
+  if (type === "success") {
+    formStatus.classList.add("success");
+  } else if (type === "error") {
+    formStatus.classList.add("error");
+  }
+};
+
+const setManagementNotice = (message) => {
+  if (managementNotice) {
+    managementNotice.textContent = message;
+  }
+};
+
+const setFormEnabled = (enabled) => {
+  const controls = productForm?.querySelectorAll("input, button[type='submit']");
+  controls?.forEach((control) => {
+    control.disabled = !enabled;
+  });
+  if (cancelEditButton) {
+    cancelEditButton.disabled = !enabled;
+  }
+
+  if (enabled && state.editingId && productIdInput) {
+    productIdInput.disabled = true;
+  }
+};
+
+const resetForm = () => {
+  productForm?.reset();
+  state.editingId = null;
+  if (productIdInput) {
+    productIdInput.disabled = false;
+  }
+  submitButton.textContent = "เพิ่มสินค้า";
+  cancelEditButton.classList.add("hidden");
+  formHeading.textContent = "เพิ่มสินค้าใหม่";
+  setManagementNotice(DEFAULT_NOTICE);
+  setFormMessage("");
+  setFormEnabled(state.source === "remote");
+};
+
+const populateForm = (product) => {
+  productIdInput.value = product.id;
+  productIdInput.disabled = true;
+  productNameInput.value = product.name;
+  productCategoryInput.value = product.category;
+  productStockInput.value = product.stock;
+  productUnitInput.value = product.unit;
+  productReorderInput.value = product.reorderPoint;
+  productPriceInput.value = product.price;
 };
 
 const buildSummaryCards = (products) => {
   const totalProducts = products.length;
-  const totalUnits = products.reduce((sum, item) => sum + item.stock, 0);
+  const totalUnits = products.reduce((sum, item) => sum + Number(item.stock), 0);
   const totalValue = products.reduce(
-    (sum, item) => sum + item.stock * item.price,
+    (sum, item) => sum + Number(item.stock) * Number(item.price),
     0
   );
   const lowStockItems = products.filter(
-    (item) => item.stock <= item.reorderPoint
+    (item) => Number(item.stock) <= Number(item.reorderPoint)
   );
 
   const summaries = [
@@ -60,9 +179,9 @@ const buildSummaryCards = (products) => {
       hint: "ยอดสินค้าคงคลังล่าสุด",
     },
     {
-      title: "มูลค่าสินค้า",
+      title: "มูลค่าสินค้าประมาณการ",
       value: formatCurrency(totalValue),
-      hint: "ประเมินจากราคาขายต่อหน่วย",
+      hint: "คำนวณจากราคาและจำนวนที่คงเหลือ",
     },
     {
       title: "สินค้าใกล้หมด",
@@ -88,7 +207,8 @@ const buildSummaryCards = (products) => {
 
 const renderLowStockTable = (items) => {
   if (!Array.isArray(items)) {
-    lowStockTable.innerHTML = loadingRow;
+    lowStockTable.innerHTML = templates.lowStockLoading;
+    lowStockCount.textContent = "0 รายการ";
     return;
   }
 
@@ -122,6 +242,12 @@ const renderLowStockTable = (items) => {
 };
 
 const renderCategoryCards = (products) => {
+  if (!products.length) {
+    categoryGrid.innerHTML =
+      '<div class="placeholder">ยังไม่มีข้อมูลสินค้าในระบบ</div>';
+    return;
+  }
+
   const categories = products.reduce((acc, item) => {
     const category = acc.get(item.category) || {
       items: 0,
@@ -130,8 +256,8 @@ const renderCategoryCards = (products) => {
     };
 
     category.items += 1;
-    category.stock += item.stock;
-    category.value += item.stock * item.price;
+    category.stock += Number(item.stock);
+    category.value += Number(item.stock) * Number(item.price);
 
     acc.set(item.category, category);
     return acc;
@@ -155,6 +281,53 @@ const renderCategoryCards = (products) => {
   categoryGrid.innerHTML = markup;
 };
 
+const renderAllProductsTable = (products) => {
+  productCountBadge.textContent = `${formatNumber(products.length)} รายการ`;
+
+  if (!products.length) {
+    allProductsTable.innerHTML = `
+      <tr>
+        <td colspan="7" class="placeholder">ยังไม่มีสินค้าในระบบ</td>
+      </tr>
+    `;
+    return;
+  }
+
+  const isRemote = state.source === "remote";
+
+  allProductsTable.innerHTML = products
+    .map(
+      ({ id, name, category, stock, unit, price, reorderPoint }) => `
+        <tr>
+          <td>
+            <strong>${name}</strong>
+            <div class="muted">${id}</div>
+          </td>
+          <td>${category}</td>
+          <td>${formatNumber(stock)}</td>
+          <td>${unit}</td>
+          <td>${formatCurrency(price)}</td>
+          <td>${formatNumber(reorderPoint)}</td>
+          <td class="actions-col">
+            ${
+              isRemote
+                ? `<div class="table-actions">
+                     <button class="btn btn-ghost" data-action="edit" data-id="${id}">
+                       แก้ไข
+                     </button>
+                     <button class="btn btn-danger" data-action="delete" data-id="${id}">
+                       ลบ
+                     </button>
+                   </div>`
+                : '<span class="muted">โหมดอ่านอย่างเดียว</span>'
+            }
+          </td>
+        </tr>
+      `
+    )
+    .join("");
+};
+
 const loadProducts = async () => {
   try {
     const response = await fetch("/api/products");
@@ -175,15 +348,206 @@ const loadProducts = async () => {
   }
 };
 
-const bootstrap = async () => {
-  lowStockTable.innerHTML = loadingRow;
+const refreshProducts = async () => {
+  lowStockTable.innerHTML = templates.lowStockLoading;
+  allProductsTable.innerHTML = templates.productsLoading;
 
   const { products, source } = await loadProducts();
+
+  state.products = products;
+  state.source = source;
+
+  updateDataSourceIndicator(source);
   updateFooterStatus(source);
+
+  if (source === "remote") {
+    setFormEnabled(true);
+    setFormMessage("");
+    if (!state.editingId) {
+      setManagementNotice(DEFAULT_NOTICE);
+    }
+  } else if (source === "fallback") {
+    resetForm();
+    setFormEnabled(false);
+    setManagementNotice(
+      "ไม่สามารถเชื่อมต่อฐานข้อมูลได้ ขณะนี้ใช้งานในโหมดอ่านอย่างเดียว"
+    );
+    setFormMessage(
+      "ไม่พบการเชื่อมต่อฐานข้อมูล แสดงข้อมูลตัวอย่างแทน",
+      "error"
+    );
+  }
 
   const lowStockItems = buildSummaryCards(products);
   renderLowStockTable(lowStockItems);
+  renderAllProductsTable(products);
   renderCategoryCards(products);
+};
+
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  if (state.source !== "remote") {
+    setFormMessage(
+      "ไม่สามารถบันทึกได้เนื่องจากโหมดอ่านอย่างเดียว",
+      "error"
+    );
+    return;
+  }
+
+  const formData = new FormData(productForm);
+  const payload = {
+    name: formData.get("name")?.trim(),
+    category: formData.get("category")?.trim(),
+    stock: Number(formData.get("stock")),
+    unit: formData.get("unit")?.trim(),
+    reorderPoint: Number(formData.get("reorderPoint")),
+    price: Number(formData.get("price")),
+  };
+
+  if (!state.editingId) {
+    payload.id = formData.get("id")?.trim();
+  }
+
+  const url = state.editingId
+    ? `/api/products/${encodeURIComponent(state.editingId)}`
+    : "/api/products";
+  const method = state.editingId ? "PUT" : "POST";
+
+  submitButton.disabled = true;
+  submitButton.textContent = state.editingId ? "กำลังบันทึก..." : "กำลังเพิ่ม...";
+  setFormMessage(
+    state.editingId ? "กำลังบันทึกการแก้ไข..." : "กำลังเพิ่มสินค้าใหม่..."
+  );
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(errorBody.message || "ไม่สามารถบันทึกข้อมูลได้");
+    }
+
+    await refreshProducts();
+    resetForm();
+    setFormMessage(
+      state.editingId ? "บันทึกการแก้ไขเรียบร้อยแล้ว" : "เพิ่มสินค้าเรียบร้อยแล้ว",
+      "success"
+    );
+  } catch (error) {
+    console.error("Form submission error:", error);
+    setFormMessage(error.message, "error");
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = state.editingId
+      ? "บันทึกการแก้ไข"
+      : "เพิ่มสินค้า";
+  }
+};
+
+const handleCancelEdit = () => {
+  resetForm();
+  setFormMessage("ยกเลิกการแก้ไขแล้ว");
+};
+
+const startEdit = (id) => {
+  const product = state.products.find((item) => item.id === id);
+  if (!product) {
+    setFormMessage("ไม่พบสินค้าที่ต้องการแก้ไข", "error");
+    return;
+  }
+
+  state.editingId = product.id;
+  populateForm(product);
+  submitButton.textContent = "บันทึกการแก้ไข";
+  cancelEditButton.classList.remove("hidden");
+  formHeading.textContent = "แก้ไขสินค้า";
+  setManagementNotice("ปรับข้อมูลสินค้าแล้วกดบันทึกเพื่ออัปเดตฐานข้อมูล");
+  setFormMessage(`กำลังแก้ไขสินค้า ${product.id}`);
+  setFormEnabled(true);
+
+  productForm.scrollIntoView({ behavior: "smooth", block: "center" });
+};
+
+const handleDelete = async (id) => {
+  if (state.source !== "remote") {
+    setFormMessage(
+      "ไม่สามารถลบสินค้าได้เนื่องจากโหมดอ่านอย่างเดียว",
+      "error"
+    );
+    return;
+  }
+
+  const product = state.products.find((item) => item.id === id);
+  if (!product) {
+    setFormMessage("ไม่พบสินค้าที่ต้องการลบ", "error");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `ต้องการลบสินค้า ${product.name} (${product.id}) ใช่หรือไม่?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  setFormMessage("กำลังลบสินค้า...");
+
+  try {
+    const response = await fetch(`/api/products/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok && response.status !== 204) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(errorBody.message || "ไม่สามารถลบสินค้าได้");
+    }
+
+    if (state.editingId === id) {
+      resetForm();
+    }
+
+    await refreshProducts();
+    setFormMessage("ลบสินค้าเรียบร้อยแล้ว", "success");
+  } catch (error) {
+    console.error("Delete error:", error);
+    setFormMessage(error.message, "error");
+  }
+};
+
+const handleTableClick = (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) {
+    return;
+  }
+
+  const { action, id } = button.dataset;
+  if (!id) {
+    return;
+  }
+
+  if (action === "edit") {
+    startEdit(id);
+  } else if (action === "delete") {
+    handleDelete(id);
+  }
+};
+
+const bootstrap = () => {
+  updateDataSourceIndicator("loading");
+  updateFooterStatus("loading");
+  lowStockTable.innerHTML = templates.lowStockLoading;
+  allProductsTable.innerHTML = templates.productsLoading;
+
+  productForm.addEventListener("submit", handleSubmit);
+  cancelEditButton.addEventListener("click", handleCancelEdit);
+  allProductsTable.addEventListener("click", handleTableClick);
+
+  refreshProducts();
 };
 
 bootstrap();

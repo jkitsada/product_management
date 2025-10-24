@@ -8,6 +8,7 @@
   --accent-light: #dbeafe;
   --success: #059669;
   --warning: #d97706;
+  --danger: #dc2626;
   font-family: "Inter", "Sarabun", system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
 }
@@ -89,6 +90,135 @@ main {
   font-size: 0.9rem;
 }
 
+.management-grid {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.form-card {
+  gap: 1.2rem;
+}
+
+.form-header h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+}
+
+.form-header .hint {
+  font-size: 0.9rem;
+}
+
+form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+input {
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  font-size: 0.95rem;
+  background: #fff;
+  color: var(--text);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: none;
+  padding: 0.65rem 1.4rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 14px 24px -16px rgba(37, 99, 235, 0.9);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-ghost {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--accent);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.18);
+}
+
+.btn-danger {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.22);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.form-status {
+  font-size: 0.9rem;
+  color: var(--muted);
+  min-height: 1.4em;
+}
+
+.form-status.success {
+  color: var(--success);
+}
+
+.form-status.error {
+  color: var(--danger);
+}
+
 .section {
   margin-bottom: 2.4rem;
 }
@@ -112,6 +242,21 @@ main {
   border-radius: 999px;
   font-weight: 600;
   font-size: 0.85rem;
+}
+
+.badge[data-state='loading'] {
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--accent);
+}
+
+.badge[data-state='remote'] {
+  background: rgba(5, 150, 105, 0.18);
+  color: var(--success);
+}
+
+.badge[data-state='fallback'] {
+  background: rgba(220, 38, 38, 0.16);
+  color: var(--danger);
 }
 
 .card-table {
@@ -142,6 +287,17 @@ thead {
 
 tbody tr:not(:last-child) {
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.actions-col {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.table-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .placeholder {
@@ -199,5 +355,23 @@ tbody tr:not(:last-child) {
   th,
   td {
     padding: 0.8rem 0.9rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions-col {
+    white-space: normal;
+  }
+
+  .table-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
