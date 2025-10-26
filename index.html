@@ -16,173 +16,195 @@
       </div>
     </header>
 
+    <nav class="top-nav">
+      <div class="container nav-container">
+        <button class="nav-link active" type="button" data-view-target="dashboard">
+          แดชบอร์ดสต็อก
+        </button>
+        <button class="nav-link" type="button" data-view-target="managemedfnt">
+          จัดการสินค้า
+        </button>
+        <a class="nav-link nav-link--external" href="/customer" target="_blank" rel="noopener">
+          หน้าแสดงสินค้า (ลูกค้า)
+        </a>
+      </div>
+    </nav>
+
     <main class="container">
-      <section class="summary-grid" id="summaryGrid"></section>
+      <div class="view" data-view="dashboard">
+        <section class="summary-grid" id="summaryGrid"></section>
 
-      <section class="section">
-        <div class="section-header">
-          <h2>จัดการสินค้า</h2>
-          <span class="badge" id="dataSourceIndicator">กำลังเชื่อมต่อ...</span>
-        </div>
-        <div class="management-grid">
-          <article class="card form-card">
-            <div class="form-header">
-              <h3 id="formHeading">เพิ่มสินค้าใหม่</h3>
-              <p class="hint" id="managementNotice">
-                กรอกข้อมูลสินค้าแล้วกดเพิ่มเพื่อบันทึกลงฐานข้อมูล
-              </p>
-            </div>
-            <form id="productForm" autocomplete="off">
-              <div class="form-grid">
-                <label>
-                  รหัสสินค้า
-                  <input
-                    type="text"
-                    name="id"
-                    id="productId"
-                    required
-                    placeholder="PRD-011"
-                  />
-                </label>
-                <label>
-                  ชื่อสินค้า
-                  <input
-                    type="text"
-                    name="name"
-                    id="productName"
-                    required
-                    placeholder="ชื่อสินค้า"
-                  />
-                </label>
-                <label>
-                  หมวดหมู่
-                  <input
-                    type="text"
-                    name="category"
-                    id="productCategory"
-                    required
-                    placeholder="เช่น เบเกอรี่"
-                  />
-                </label>
-                <label>
-                  จำนวนคงเหลือ
-                  <input
-                    type="number"
-                    name="stock"
-                    id="productStock"
-                    min="0"
-                    required
-                  />
-                </label>
-                <label>
-                  หน่วย
-                  <input
-                    type="text"
-                    name="unit"
-                    id="productUnit"
-                    required
-                    placeholder="เช่น ชิ้น"
-                  />
-                </label>
-                <label>
-                  จุดสั่งซื้อซ้ำ
-                  <input
-                    type="number"
-                    name="reorderPoint"
-                    id="productReorder"
-                    min="0"
-                    required
-                  />
-                </label>
-                <label>
-                  ราคา (บาท)
-                  <input
-                    type="number"
-                    name="price"
-                    id="productPrice"
-                    step="0.01"
-                    min="0"
-                    required
-                  />
-                </label>
+        <section class="section">
+          <div class="section-header">
+            <h2>รายการสินค้าใกล้หมด</h2>
+            <span class="badge" id="lowStockCount">0 รายการ</span>
+          </div>
+          <div class="card-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>สินค้า</th>
+                  <th>หมวดหมู่</th>
+                  <th>คงเหลือ</th>
+                  <th>หน่วย</th>
+                </tr>
+              </thead>
+              <tbody id="lowStockTable">
+                <tr>
+                  <td colspan="4" class="placeholder">กำลังโหลดข้อมูล...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <h2>ภาพรวมตามหมวดหมู่</h2>
+          </div>
+          <div class="category-grid" id="categoryGrid"></div>
+        </section>
+      </div>
+
+      <div class="view hidden" data-view="management">
+        <section class="section">
+          <div class="section-header">
+            <h2>จัดการสินค้า</h2>
+            <span class="badge" id="dataSourceIndicator">กำลังเชื่อมต่อ...</span>
+          </div>
+          <div class="management-grid">
+            <article class="card form-card">
+              <div class="form-header">
+                <h3 id="formHeading">เพิ่มสินค้าใหม่</h3>
+                <p class="hint" id="managementNotice">
+                  กรอกข้อมูลสินค้าแล้วกดเพิ่มเพื่อบันทึกลงฐานข้อมูล
+                </p>
               </div>
-              <div class="form-actions">
-                <button class="btn btn-primary" type="submit" id="submitButton">
-                  เพิ่มสินค้า
-                </button>
-                <button
-                  class="btn btn-ghost hidden"
-                  type="button"
-                  id="cancelEditButton"
-                >
-                  ยกเลิกการแก้ไข
-                </button>
-              </div>
-            </form>
-            <div class="form-status" id="formStatus" role="status"></div>
-          </article>
-        </div>
-      </section>
+              <form id="productForm" autocomplete="off">
+                <div class="form-grid">
+                  <label>
+                    รหัสสินค้า
+                    <input
+                      type="text"
+                      name="id"
+                      id="productId"
+                      required
+                      placeholder="PRD-011"
+                    />
+                  </label>
+                  <label>
+                    ชื่อสินค้า
+                    <input
+                      type="text"
+                      name="name"
+                      id="productName"
+                      required
+                      placeholder="ชื่อสินค้า"
+                    />
+                  </label>
+                  <label>
+                    หมวดหมู่
+                    <input
+                      type="text"
+                      name="category"
+                      id="productCategory"
+                      required
+                      placeholder="เช่น เบเกอรี่"
+                    />
+                  </label>
+                  <label>
+                    จำนวนคงเหลือ
+                    <input
+                      type="number"
+                      name="stock"
+                      id="productStock"
+                      min="0"
+                      required
+                    />
+                  </label>
+                  <label>
+                    หน่วย
+                    <input
+                      type="text"
+                      name="unit"
+                      id="productUnit"
+                      required
+                      placeholder="เช่น ชิ้น"
+                    />
+                  </label>
+                  <label>
+                    จุดสั่งซื้อซ้ำ
+                    <input
+                      type="number"
+                      name="reorderPoint"
+                      id="productReorder"
+                      min="0"
+                      required
+                    />
+                  </label>
+                  <label>
+                    ราคา (บาท)
+                    <input
+                      type="number"
+                      name="price"
+                      id="productPrice"
+                      step="0.01"
+                      min="0"
+                      required
+                    />
+                  </label>
+                </div>
+                <div class="form-actions">
+                  <button
+                    class="btn btn-primary"
+                    type="submit"
+                    id="submitButton"
+                  >
+                    เพิ่มสินค้า
+                  </button>
+                  <button
+                    class="btn btn-ghost hidden"
+                    type="button"
+                    id="cancelEditButton"
+                  >
+                    ยกเลิกการแก้ไข
+                  </button>
+                </div>
+              </form>
+              <div class="form-status" id="formStatus" role="status"></div>
+            </article>
+          </div>
+        </section>
 
-      <section class="section">
-        <div class="section-header">
-          <h2>รายการสินค้าใกล้หมด</h2>
-          <span class="badge" id="lowStockCount">0 รายการ</span>
-        </div>
-        <div class="card-table">
-          <table>
-            <thead>
-              <tr>
-                <th>สินค้า</th>
-                <th>หมวดหมู่</th>
-                <th>คงเหลือ</th>
-                <th>หน่วย</th>
-              </tr>
-            </thead>
-            <tbody id="lowStockTable">
-              <tr>
-                <td colspan="4" class="placeholder">กำลังโหลดข้อมูล...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-header">
-          <h2>รายการสินค้าทั้งหมด</h2>
-          <span class="badge" id="productCount">0 รายการ</span>
-        </div>
-        <div class="card-table">
-          <table>
-            <thead>
-              <tr>
-                <th>สินค้า</th>
-                <th>หมวดหมู่</th>
-                <th>คงเหลือ</th>
-                <th>หน่วย</th>
-                <th>ราคา</th>
-                <th>จุดสั่งซื้อ</th>
-                <th class="actions-col">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="allProductsTable">
-              <tr>
-                <td colspan="7" class="placeholder">
-                  กำลังโหลดรายการสินค้า...
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-header">
-          <h2>ภาพรวมตามหมวดหมู่</h2>
-        </div>
-        <div class="category-grid" id="categoryGrid"></div>
-      </section>
+        <section class="section">
+          <div class="section-header">
+            <h2>รายการสินค้าทั้งหมด</h2>
+            <span class="badge" id="productCount">0 รายการ</span>
+          </div>
+          <div class="card-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>สินค้า</th>
+                  <th>หมวดหมู่</th>
+                  <th>คงเหลือ</th>
+                  <th>หน่วย</th>
+                  <th>ราคา</th>
+                  <th>จุดสั่งซื้อ</th>
+                  <th class="actions-col">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="allProductsTable">
+                <tr>
+                  <td colspan="7" class="placeholder">
+                    กำลังโหลดรายการสินค้า...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </main>
 
     <footer class="footer">

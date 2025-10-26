@@ -49,8 +49,54 @@ body {
   font-size: 1.05rem;
 }
 
+.top-nav {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.nav-container {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 0;
+}
+
+.nav-link {
+  border: none;
+  background: transparent;
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+
+.nav-link:hover {
+  color: var(--accent);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.nav-link.active {
+  color: #ffffff;
+  background: var(--accent);
+  box-shadow: 0 12px 18px -16px rgba(37, 99, 235, 0.8);
+}
+
 main {
   padding: 1.8rem 0 3rem;
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 2.2rem;
+}
+
+.view.hidden {
+  display: none;
 }
 
 .summary-grid {

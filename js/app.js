@@ -6,6 +6,9 @@ const state = {
   editingId: null,
 };
 
+const views = document.querySelectorAll("[data-view]");
+const navButtons = document.querySelectorAll("[data-view-target]");
+
 const summaryGrid = document.querySelector("#summaryGrid");
 const lowStockTable = document.querySelector("#lowStockTable");
 const lowStockCount = document.querySelector("#lowStockCount");
@@ -537,7 +540,25 @@ const handleTableClick = (event) => {
   }
 };
 
+const showView = (target) => {
+  views.forEach((view) => {
+    view.classList.toggle("hidden", view.dataset.view !== target);
+  });
+
+  navButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.viewTarget === target);
+  });
+};
+
 const bootstrap = () => {
+  navButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.viewTarget || "dashboard";
+      showView(target);
+    });
+  });
+
+  showView("dashboard");
   updateDataSourceIndicator("loading");
   updateFooterStatus("loading");
   lowStockTable.innerHTML = templates.lowStockLoading;
