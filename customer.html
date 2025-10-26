@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>สินค้าแนะนำสำหรับลูกค้า</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body class="customer-body">
+    <header class="customer-hero">
+      <div class="container customer-hero__inner">
+        <div>
+          <h1>สินค้าแนะนำพร้อมสต็อกพร้อมส่ง</h1>
+          <p>
+            เลือกชมสินค้ายอดนิยมจากร้านของเราได้ทันที เราอัปเดตจำนวนคงเหลือแบบเรียลไทม์
+            เพื่อให้คุณตัดสินใจได้ง่ายขึ้น
+          </p>
+        </div>
+        <button class="btn btn-line" id="shareButton" type="button">
+          แชร์ลิงก์ให้ลูกค้าผ่านแชต
+        </button>
+      </div>
+    </header>
+
+    <main class="container customer-main">
+      <section class="section">
+        <div class="section-header">
+          <h2>รายการสินค้าพร้อมจำหน่าย</h2>
+          <span class="badge" id="customerProductCount">0 รายการ</span>
+        </div>
+        <div
+          class="product-card-grid"
+          id="customerProductGrid"
+          aria-live="polite"
+        >
+          <div class="product-card skeleton">
+            <div class="product-card__image skeleton-box"></div>
+            <div class="product-card__content">
+              <div class="skeleton-line skeleton-line--title"></div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line skeleton-line--short"></div>
+            </div>
+          </div>
+          <div class="product-card skeleton">
+            <div class="product-card__image skeleton-box"></div>
+            <div class="product-card__content">
+              <div class="skeleton-line skeleton-line--title"></div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line skeleton-line--short"></div>
+            </div>
+          </div>
+          <div class="product-card skeleton">
+            <div class="product-card__image skeleton-box"></div>
+            <div class="product-card__content">
+              <div class="skeleton-line skeleton-line--title"></div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line skeleton-line--short"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <small id="customerFooterNote">
+          กำลังโหลดข้อมูลสินค้า...
+        </small>
+      </div>
+    </footer>
+
+    <script type="module" src="js/customer.js"></script>
+  </body>
+</html>

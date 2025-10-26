@@ -54,7 +54,8 @@ app.get('/api/products', async (req, res) => {
         stock,
         unit,
         reorder_point AS "reorderPoint",
-        price
+        price,
+        image_url AS "imageUrl"
       FROM products
       ORDER BY id ASC`
     );
@@ -96,6 +97,7 @@ app.post('/api/products', async (req, res) => {
     unit: String(req.body.unit).trim(),
     reorderPoint: Number(req.body.reorderPoint),
     price: Number(req.body.price),
+    imageUrl: req.body.imageUrl ? String(req.body.imageUrl).trim() : null,
   };
 
   if (!payload.id || !payload.name || !payload.category || !payload.unit) {
@@ -117,8 +119,8 @@ app.post('/api/products', async (req, res) => {
   try {
     const { rows } = await pool.query(
       `INSERT INTO products (
-        id, name, category, stock, unit, reorder_point, price
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        id, name, category, stock, unit, reorder_point, price, image_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING
         id,
         name,
@@ -126,7 +128,8 @@ app.post('/api/products', async (req, res) => {
         stock,
         unit,
         reorder_point AS "reorderPoint",
-        price`,
+        price,
+        image_url AS "imageUrl"`,
       [
         payload.id,
         payload.name,
@@ -135,6 +138,7 @@ app.post('/api/products', async (req, res) => {
         payload.unit,
         payload.reorderPoint,
         payload.price,
+        payload.imageUrl,
       ]
     );
 
@@ -165,6 +169,8 @@ app.put('/api/products/:id', async (req, res) => {
     reorderPoint:
       req.body.reorderPoint !== undefined ? Number(req.body.reorderPoint) : null,
     price: req.body.price !== undefined ? Number(req.body.price) : null,
+    imageUrl:
+      req.body.imageUrl !== undefined ? String(req.body.imageUrl).trim() : null,
   };
 
   if (
@@ -175,6 +181,7 @@ app.put('/api/products/:id', async (req, res) => {
       payload.unit,
       payload.reorderPoint,
       payload.price,
+      payload.imageUrl,
     ].every((value) => value === null)
   ) {
     return res.status(400).json({ message: 'No fields provided to update.' });
@@ -201,6 +208,7 @@ app.put('/api/products/:id', async (req, res) => {
     unit: payload.unit,
     reorder_point: payload.reorderPoint,
     price: payload.price,
+    image_url: payload.imageUrl,
   }).forEach(([column, value]) => {
     if (value !== null) {
       updates.push(`${column} = $${position}`);
@@ -224,7 +232,8 @@ app.put('/api/products/:id', async (req, res) => {
          stock,
          unit,
          reorder_point AS "reorderPoint",
-         price`,
+         price,
+         image_url AS "imageUrl"`,
       values
     );
 
@@ -261,6 +270,10 @@ app.delete('/api/products/:id', async (req, res) => {
     console.error('Error deleting product:', error);
     res.status(500).json({ message: 'Failed to delete product.' });
   }
+});
+
+app.get('/customer', (req, res) => {
+  res.sendFile(path.join(__dirname, 'customer.html'));
 });
 
 app.get('*', (req, res) => {
