@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>เข้าสู่ระบบ | Product Management</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-layout">
+      <section class="auth-card" aria-labelledby="authHeading">
+        <header class="auth-header">
+          <h1 id="authHeading">ยินดีต้อนรับกลับ</h1>
+          <p class="auth-subtitle">
+            ลงชื่อเข้าใช้หรือสร้างบัญชีใหม่ด้วยอีเมล Gmail เพื่อจัดการสินค้า
+          </p>
+        </header>
+        <div class="auth-toggle">
+          <button
+            class="auth-toggle__button active"
+            type="button"
+            data-mode="login"
+          >
+            เข้าสู่ระบบ
+          </button>
+          <button class="auth-toggle__button" type="button" data-mode="signup">
+            สมัครสมาชิก
+          </button>
+        </div>
+
+        <form id="authForm" novalidate>
+          <div class="auth-field">
+            <label for="email">อีเมล (จำกัด @gmail.com)</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              autocomplete="email"
+              required
+              placeholder="yourname@gmail.com"
+            />
+          </div>
+          <div class="auth-field">
+            <label for="password">รหัสผ่าน</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              autocomplete="current-password"
+              minlength="6"
+              required
+              placeholder="กรอกรหัสผ่านอย่างน้อย 6 ตัวอักษร"
+            />
+          </div>
+          <button class="btn btn-primary auth-submit" type="submit">
+            เข้าสู่ระบบ
+          </button>
+        </form>
+        <p class="auth-feedback" id="authFeedback" role="status"></p>
+      </section>
+      <aside class="auth-hero">
+        <div class="auth-hero__content">
+          <h2>Product Management Platform</h2>
+          <p>
+            รวมทุกอย่างที่ทีมของคุณต้องการในการดูแลสต็อกสินค้า สร้างรายการ
+            และส่งให้ลูกค้าตัดสินใจได้ง่ายในลิงก์เดียว
+          </p>
+          <ul>
+            <li>ดูภาพรวมสต็อกแบบเรียลไทม์</li>
+            <li>อัปเดตสินค้าผ่านเว็บได้ทันที</li>
+            <li>สร้างหน้าส่งลูกค้าพร้อมปุ่มแชร์</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+    <script type="module" src="js/auth.js"></script>
+  </body>
+</html>

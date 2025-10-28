@@ -114,7 +114,7 @@ const updateFooter = (source) => {
 
 const loadProducts = async () => {
   try {
-    const response = await fetch("/api/products");
+    const response = await fetch("/api/public/products");
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
     }

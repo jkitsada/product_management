@@ -1,11 +1,20 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.warn(
+    'JWT_SECRET is not set. Authentication tokens will not be secure until this value is configured.'
+  );
+}
 
 if (!process.env.DATABASE_URL) {
   console.warn(
@@ -32,6 +41,52 @@ const ensureDatabase = (res) => {
   return true;
 };
 
+const generateToken = (user) => {
+  if (!JWT_SECRET) {
+    throw new Error('JWT secret is not configured');
+  }
+
+  return jwt.sign(
+    {
+      sub: user.id,
+      email: user.email,
+    },
+    JWT_SECRET,
+    { expiresIn: '12h' }
+  );
+};
+
+const authenticate = async (req, res, next) => {
+  if (!ensureDatabase(res)) {
+    return;
+  }
+
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ message: 'Missing authorization token.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { rows } = await pool.query(
+      'SELECT id, email, created_at FROM users WHERE id = $1',
+      [decoded.sub]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid or expired token.' });
+    }
+
+    req.user = rows[0];
+    next();
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return res.status(401).json({ message: 'Invalid or expired token.' });
+  }
+};
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
@@ -40,7 +95,102 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-app.get('/api/products', async (req, res) => {
+app.post('/api/auth/signup', async (req, res) => {
+  if (!ensureDatabase(res)) {
+    return;
+  }
+
+  const email = req.body.email ? String(req.body.email).trim().toLowerCase() : '';
+  const password = req.body.password ? String(req.body.password) : '';
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
+  }
+
+  if (!email.endsWith('@gmail.com')) {
+    return res.status(400).json({
+      message: 'ขณะนี้ระบบรองรับเฉพาะอีเมล Gmail เท่านั้น กรุณาใช้ที่อยู่อีเมลที่ลงท้ายด้วย @gmail.com',
+    });
+  }
+
+  if (password.length < 6) {
+    return res
+      .status(400)
+      .json({ message: 'Password ต้องมีความยาวอย่างน้อย 6 ตัวอักษร' });
+  }
+
+  try {
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [
+      email,
+    ]);
+    if (existing.rows.length > 0) {
+      return res
+        .status(409)
+        .json({ message: 'อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบ' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const { rows } = await pool.query(
+      `INSERT INTO users (email, password_hash)
+       VALUES ($1, $2)
+       RETURNING id, email, created_at`,
+      [email, passwordHash]
+    );
+
+    const user = rows[0];
+    const token = generateToken(user);
+
+    res.status(201).json({ token, user });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ message: 'ไม่สามารถสร้างบัญชีได้ กรุณาลองใหม่' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  if (!ensureDatabase(res)) {
+    return;
+  }
+
+  const email = req.body.email ? String(req.body.email).trim().toLowerCase() : '';
+  const password = req.body.password ? String(req.body.password) : '';
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email และ Password จำเป็นต้องกรอก' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, email, password_hash, created_at FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+    }
+
+    const user = rows[0];
+    const valid = await bcrypt.compare(password, user.password_hash);
+
+    if (!valid) {
+      return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+    }
+
+    const token = generateToken(user);
+    delete user.password_hash;
+
+    res.json({ token, user });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่' });
+  }
+});
+
+app.get('/api/auth/me', authenticate, (req, res) => {
+  res.json({ user: req.user });
+});
+
+app.get('/api/products', authenticate, async (req, res) => {
   if (!pool) {
     return res.status(200).json({ fallback: true, products: [] });
   }
@@ -67,7 +217,7 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-app.post('/api/products', async (req, res) => {
+app.post('/api/products', authenticate, async (req, res) => {
   if (!ensureDatabase(res)) {
     return;
   }
@@ -154,7 +304,34 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-app.put('/api/products/:id', async (req, res) => {
+app.get('/api/public/products', async (req, res) => {
+  if (!pool) {
+    return res.status(200).json({ fallback: true, products: [] });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+        id,
+        name,
+        category,
+        stock,
+        unit,
+        reorder_point AS "reorderPoint",
+        price,
+        image_url AS "imageUrl"
+      FROM products
+      ORDER BY name ASC`
+    );
+
+    res.json({ fallback: false, products: rows });
+  } catch (error) {
+    console.error('Error fetching public products:', error);
+    res.status(500).json({ message: 'Failed to load products' });
+  }
+});
+
+app.put('/api/products/:id', authenticate, async (req, res) => {
   if (!ensureDatabase(res)) {
     return;
   }
@@ -248,7 +425,7 @@ app.put('/api/products/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:id', authenticate, async (req, res) => {
   if (!ensureDatabase(res)) {
     return;
   }
@@ -274,6 +451,10 @@ app.delete('/api/products/:id', async (req, res) => {
 
 app.get('/customer', (req, res) => {
   res.sendFile(path.join(__dirname, 'customer.html'));
+});
+
+app.get('/auth', (req, res) => {
+  res.sendFile(path.join(__dirname, 'auth.html'));
 });
 
 app.get('*', (req, res) => {

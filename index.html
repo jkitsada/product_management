@@ -18,15 +18,23 @@
 
     <nav class="top-nav">
       <div class="container nav-container">
-        <button class="nav-link active" type="button" data-view-target="dashboard">
-          แดชบอร์ดสต็อก
-        </button>
-        <button class="nav-link" type="button" data-view-target="managemedfnt">
-          จัดการสินค้า
-        </button>
-        <a class="nav-link nav-link--external" href="/customer" target="_blank" rel="noopener">
-          หน้าแสดงสินค้า (ลูกค้า)
-        </a>
+        <div class="nav-group">
+          <button class="nav-link active" type="button" data-view-target="dashboard">
+            แดชบอร์ดสต็อก
+          </button>
+          <button class="nav-link" type="button" data-view-target="management">
+            จัดการสินค้า
+          </button>
+          <a class="nav-link nav-link--external" href="/customer" target="_blank" rel="noopener">
+            หน้าแสดงสินค้า (ลูกค้า)
+          </a>
+        </div>
+        <div class="nav-group nav-group--user">
+          <span class="nav-user" id="currentUserEmail">กำลังโหลด...</span>
+          <button class="nav-link nav-link--logout" type="button" id="logoutButton">
+            ออกจากระบบ
+          </button>
+        </div>
       </div>
     </nav>
 

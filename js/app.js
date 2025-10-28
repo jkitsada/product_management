@@ -1,13 +1,19 @@
 import { products as fallbackProducts } from "./data.js";
 
+const TOKEN_KEY = "pm_token";
+
 const state = {
   source: "loading",
   products: [],
   editingId: null,
+  authToken: null,
+  currentUser: null,
 };
 
 const views = document.querySelectorAll("[data-view]");
 const navButtons = document.querySelectorAll("[data-view-target]");
+const logoutButton = document.querySelector("#logoutButton");
+const currentUserEmail = document.querySelector("#currentUserEmail");
 
 const summaryGrid = document.querySelector("#summaryGrid");
 const lowStockTable = document.querySelector("#lowStockTable");
@@ -47,6 +53,20 @@ const templates = {
 
 const DEFAULT_NOTICE =
   "กรอกข้อมูลสินค้าแล้วกดเพิ่มเพื่อบันทึกลงฐานข้อมูล";
+
+const redirectToLogin = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  window.location.replace("/auth");
+};
+
+const requireToken = () => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    redirectToLogin();
+    return null;
+  }
+  return token;
+};
 
 const formatNumber = (value) =>
   Number(value).toLocaleString("th-TH", { maximumFractionDigits: 0 });
@@ -333,8 +353,16 @@ const renderAllProductsTable = (products) => {
 
 const loadProducts = async () => {
   try {
-    const response = await fetch("/api/products");
+    const response = await fetch("/api/products", {
+      headers: {
+        Authorization: `Bearer ${state.authToken}`,
+      },
+    });
     if (!response.ok) {
+      if (response.status === 401) {
+        redirectToLogin();
+        return { source: "fallback", products: fallbackProducts };
+      }
       throw new Error(`Request failed with status ${response.status}`);
     }
 
@@ -425,11 +453,18 @@ const handleSubmit = async (event) => {
   try {
     const response = await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${state.authToken}`,
+      },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        redirectToLogin();
+        return;
+      }
       const errorBody = await response.json().catch(() => ({}));
       throw new Error(errorBody.message || "ไม่สามารถบันทึกข้อมูลได้");
     }
@@ -503,9 +538,16 @@ const handleDelete = async (id) => {
   try {
     const response = await fetch(`/api/products/${encodeURIComponent(id)}`, {
       method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${state.authToken}`,
+      },
     });
 
     if (!response.ok && response.status !== 204) {
+      if (response.status === 401) {
+        redirectToLogin();
+        return;
+      }
       const errorBody = await response.json().catch(() => ({}));
       throw new Error(errorBody.message || "ไม่สามารถลบสินค้าได้");
     }
@@ -551,6 +593,36 @@ const showView = (target) => {
 };
 
 const bootstrap = () => {
+  const token = requireToken();
+  if (!token) {
+    return;
+  }
+
+  state.authToken = token;
+
+  logoutButton?.addEventListener("click", () => {
+    redirectToLogin();
+  });
+
+  fetch("/api/auth/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error("unauthorized");
+      }
+      return response.json();
+    })
+    .then(({ user }) => {
+      state.currentUser = user;
+      if (currentUserEmail) {
+        currentUserEmail.textContent = user.email;
+      }
+    })
+    .catch(() => {
+      redirectToLogin();
+    });
+
   navButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const target = button.dataset.viewTarget || "dashboard";
