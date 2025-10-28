@@ -8,14 +8,14 @@ const state = {
 const productGrid = document.querySelector("#customerProductGrid");
 const productCountBadge = document.querySelector("#customerProductCount");
 const footerNote = document.querySelector("#customerFooterNote");
-const shareButton = document.querySelector("#shareButton");
-const shareMenu = document.querySelector("#shareMenu");
-const shareMenuItems = document.querySelectorAll("[data-share-target]");
+const lineShareButton = document.querySelector("#lineShareButton");
+const messengerShareButton = document.querySelector("#messengerShareButton");
+const copyLinkButton = document.querySelector("#copyLinkButton");
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=600&q=80";
 
-const MESSENGER_APP_ID = "1315445346472033";
+const MESSENGER_APP_ID = "REPLACE_WITH_FACEBOOK_APP_ID";
 
 const imageLookup = fallbackProducts.reduce((map, item) => {
   map.set(item.id, item.imageUrl);
@@ -152,122 +152,51 @@ const showShareFeedback = (message) => {
   }, 2500);
 };
 
-const setupShareButton = () => {
-  if (!shareButton) {
-    return;
-  }
-
+const setupShareButtons = () => {
   const url = window.location.href;
-  const title = "รายการสินค้าพร้อมจำหน่าย";
   const text = "เลือกชมสินค้าที่สนใจจากร้านเราได้ที่ลิงก์นี้นะครับ";
 
-  const tryWebShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, text, url });
-        showShareFeedback("แชร์ลิงก์ไปยังแชตที่ต้องการเรียบร้อยแล้ว");
-      } catch (error) {
-        if (error.name !== "AbortError") {
-          console.error("Web Share failed:", error);
-          showShareFeedback("ไม่สามารถเปิดหน้าต่างแชร์ได้ กรุณาลองอีกครั้ง");
-        }
+  if (lineShareButton) {
+    lineShareButton.addEventListener("click", () => {
+      const message = `${text}\n${url}`;
+      const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(message)}`;
+      window.open(lineUrl, "_blank");
+      showShareFeedback("เปิดหน้าต่าง LINE เพื่อแชร์ลิงก์แล้ว");
+    });
+  }
+
+  if (messengerShareButton) {
+    messengerShareButton.addEventListener("click", () => {
+      if (!MESSENGER_APP_ID || MESSENGER_APP_ID === "REPLACE_WITH_FACEBOOK_APP_ID") {
+        showShareFeedback("กรุณาตั้งค่า Facebook Messenger App ID ในไฟล์ js/customer.js ก่อนใช้งาน");
+        return;
       }
-      return true;
-    }
-    return false;
-  };
 
-  const toggleShareMenu = (visible) => {
-    if (!shareMenu) return;
-    if (visible) {
-      shareMenu.classList.remove("hidden");
-    } else {
-      shareMenu.classList.add("hidden");
-    }
-  };
+      const redirectUri = url;
+      const messengerUrl = `https://www.facebook.com/dialog/send?app_id=${encodeURIComponent(
+        MESSENGER_APP_ID
+      )}&link=${encodeURIComponent(url)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
-  const openLineShare = () => {
-    const message = `${text}\n${url}`;
-    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(message)}`;
-    window.open(lineUrl, "_blank");
-    showShareFeedback("เปิดหน้าต่าง LINE เพื่อแชร์ลิงก์แล้ว");
-  };
+      window.open(messengerUrl, "_blank");
+      showShareFeedback("เปิดหน้าต่าง Messenger เพื่อแชร์ลิงก์แล้ว");
+    });
+  }
 
-  const openMessengerShare = () => {
-    if (!MESSENGER_APP_ID || MESSENGER_APP_ID === "REPLACE_WITH_FACEBOOK_APP_ID") {
-      showShareFeedback("กรุณาตั้งค่า Facebook Messenger App ID ในไฟล์ js/customer.js ก่อนใช้งาน");
-      return;
-    }
-
-    const redirectUri = url;
-    const messengerUrl = `https://www.facebook.com/dialog/send?app_id=${encodeURIComponent(
-      MESSENGER_APP_ID
-    )}&link=${encodeURIComponent(url)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
-
-    window.open(messengerUrl, "_blank");
-    showShareFeedback("เปิดหน้าต่าง Messenger เพื่อแชร์ลิงก์แล้ว");
-  };
-
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      showShareFeedback("คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว นำไปวางในแชตที่ต้องการได้เลย");
-    } catch (error) {
-      console.error("Clipboard write failed:", error);
-      window.prompt("คัดลอกลิงก์นี้ไปแชร์ในแชตที่ต้องการ", url);
-    }
-  };
-
-  shareButton.addEventListener("click", async (event) => {
-    event.stopPropagation();
-    const webShared = await tryWebShare();
-    if (!webShared) {
-      const shouldShow = shareMenu?.classList.contains("hidden");
-      toggleShareMenu(shouldShow);
-    }
-  });
-
-  shareMenuItems.forEach((item) => {
-    item.addEventListener("click", async (event) => {
-      const target = event.currentTarget.dataset.shareTarget;
-      toggleShareMenu(false);
-
-      switch (target) {
-        case "line":
-          openLineShare();
-          break;
-        case "messenger":
-          openMessengerShare();
-          break;
-        case "copy":
-        default:
-          await copyLink();
-          break;
+  if (copyLinkButton) {
+    copyLinkButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        showShareFeedback("คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว นำไปวางในแชตที่ต้องการได้เลย");
+      } catch (error) {
+        console.error("Clipboard write failed:", error);
+        window.prompt("คัดลอกลิงก์นี้ไปแชร์ในแชตที่ต้องการ", url);
       }
     });
-  });
-
-  document.addEventListener("click", (event) => {
-    if (!shareMenu || shareMenu.classList.contains("hidden")) {
-      return;
-    }
-    if (
-      !shareMenu.contains(event.target) &&
-      event.target !== shareButton
-    ) {
-      toggleShareMenu(false);
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      toggleShareMenu(false);
-    }
-  });
+  }
 };
 
 const bootstrap = async () => {
-  setupShareButton();
+  setupShareButtons();
   updateFooter("loading");
 
   const { products, source } = await loadProducts();
