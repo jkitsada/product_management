@@ -16,9 +16,22 @@
             เพื่อให้คุณตัดสินใจได้ง่ายขึ้น
           </p>
         </div>
-        <button class="btn btn-line" id="shareButton" type="button">
-          แชร์ลิงก์ให้ลูกค้าผ่านแชต
-        </button>
+        <div class="share-wrapper">
+          <button class="btn btn-line" id="shareButton" type="button">
+            แชร์ลิงก์ให้ลูกค้าผ่านแชต
+          </button>
+          <div class="share-menu hidden" id="shareMenu">
+            <button class="share-menu__item" type="button" data-share-target="line">
+              แชร์ผ่าน LINE
+            </button>
+            <button class="share-menu__item" type="button" data-share-target="messenger">
+              แชร์ผ่าน Messenger
+            </button>
+            <button class="share-menu__item" type="button" data-share-target="copy">
+              คัดลอกลิงก์
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
