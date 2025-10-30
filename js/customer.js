@@ -1,8 +1,12 @@
 import { products as fallbackProducts } from "./data.js";
 
+const TOKEN_KEY = "pm_token";
+
 const state = {
   source: "loading",
   products: [],
+  authToken: null,
+  currentUser: null,
 };
 
 const productGrid = document.querySelector("#customerProductGrid");
@@ -11,6 +15,23 @@ const footerNote = document.querySelector("#customerFooterNote");
 const lineShareButton = document.querySelector("#lineShareButton");
 const messengerShareButton = document.querySelector("#messengerShareButton");
 const copyLinkButton = document.querySelector("#copyLinkButton");
+
+const redirectToLogin = () => {
+  const redirectPath = encodeURIComponent(
+    `${window.location.pathname}${window.location.search}`
+  );
+  localStorage.removeItem(TOKEN_KEY);
+  window.location.replace(`/auth?redirect=${redirectPath}`);
+};
+
+const requireToken = () => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    redirectToLogin();
+    return null;
+  }
+  return token;
+};
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=600&q=80";
@@ -118,8 +139,16 @@ const updateFooter = (source) => {
 
 const loadProducts = async () => {
   try {
-    const response = await fetch("/api/public/products");
+    const response = await fetch("/api/products", {
+      headers: {
+        Authorization: `Bearer ${state.authToken}`,
+      },
+    });
     if (!response.ok) {
+      if (response.status === 401) {
+        redirectToLogin();
+        return { source: "fallback", products: fallbackProducts };
+      }
       throw new Error(`Request failed with status ${response.status}`);
     }
 
@@ -133,6 +162,27 @@ const loadProducts = async () => {
   } catch (error) {
     console.error("Unable to fetch products from API:", error);
     return { source: "fallback", products: fallbackProducts };
+  }
+};
+
+const loadCurrentUser = async () => {
+  try {
+    const response = await fetch("/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${state.authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Unauthorized (${response.status})`);
+    }
+
+    const payload = await response.json();
+    return payload.user;
+  } catch (error) {
+    console.error("Unable to load current user:", error);
+    redirectToLogin();
+    return null;
   }
 };
 
@@ -153,12 +203,12 @@ const showShareFeedback = (message) => {
 };
 
 const setupShareButtons = () => {
-  const url = window.location.href;
+  const shareUrl = `${window.location.origin}/customer`;
   const text = "เลือกชมสินค้าที่สนใจจากร้านเราได้ที่ลิงก์นี้นะครับ";
 
   if (lineShareButton) {
     lineShareButton.addEventListener("click", () => {
-      const message = `${text}\n${url}`;
+      const message = `${text}\n${shareUrl}`;
       const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(message)}`;
       window.open(lineUrl, "_blank");
       showShareFeedback("เปิดหน้าต่าง LINE เพื่อแชร์ลิงก์แล้ว");
@@ -172,10 +222,10 @@ const setupShareButtons = () => {
         return;
       }
 
-      const redirectUri = url;
+      const redirectUri = shareUrl;
       const messengerUrl = `https://www.facebook.com/dialog/send?app_id=${encodeURIComponent(
         MESSENGER_APP_ID
-      )}&link=${encodeURIComponent(url)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      )}&link=${encodeURIComponent(shareUrl)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
       window.open(messengerUrl, "_blank");
       showShareFeedback("เปิดหน้าต่าง Messenger เพื่อแชร์ลิงก์แล้ว");
@@ -185,19 +235,33 @@ const setupShareButtons = () => {
   if (copyLinkButton) {
     copyLinkButton.addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(url);
+        await navigator.clipboard.writeText(shareUrl);
         showShareFeedback("คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว นำไปวางในแชตที่ต้องการได้เลย");
       } catch (error) {
         console.error("Clipboard write failed:", error);
-        window.prompt("คัดลอกลิงก์นี้ไปแชร์ในแชตที่ต้องการ", url);
+        window.prompt("คัดลอกลิงก์นี้ไปแชร์ในแชตที่ต้องการ", shareUrl);
       }
     });
   }
 };
 
 const bootstrap = async () => {
+  const token = requireToken();
+  if (!token) {
+    return;
+  }
+
+  state.authToken = token;
+
   setupShareButtons();
   updateFooter("loading");
+
+  const user = await loadCurrentUser();
+  if (!user) {
+    return;
+  }
+
+  state.currentUser = user;
 
   const { products, source } = await loadProducts();
   state.products = products;

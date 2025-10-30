@@ -207,7 +207,9 @@ app.get('/api/products', authenticate, async (req, res) => {
         price,
         image_url AS "imageUrl"
       FROM products
-      ORDER BY id ASC`
+      WHERE owner_id = $1
+      ORDER BY id ASC`,
+      [req.user.id]
     );
 
     res.json({ fallback: false, products: rows });
@@ -269,8 +271,8 @@ app.post('/api/products', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `INSERT INTO products (
-        id, name, category, stock, unit, reorder_point, price, image_url
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        id, name, category, stock, unit, reorder_point, price, image_url, owner_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING
         id,
         name,
@@ -279,7 +281,7 @@ app.post('/api/products', authenticate, async (req, res) => {
         unit,
         reorder_point AS "reorderPoint",
         price,
-        image_url AS "imageUrl"`,
+        image_url AS "ImageUrl"`,
       [
         payload.id,
         payload.name,
@@ -289,6 +291,7 @@ app.post('/api/products', authenticate, async (req, res) => {
         payload.reorderPoint,
         payload.price,
         payload.imageUrl,
+        req.user.id,
       ]
     );
 
@@ -309,6 +312,13 @@ app.get('/api/public/products', async (req, res) => {
     return res.status(200).json({ fallback: true, products: [] });
   }
 
+  const ownerId = req.query.owner ? Number(req.query.owner) : null;
+  if (!ownerId) {
+    return res
+      .status(400)
+      .json({ message: 'ต้องระบุ owner parameter เช่น /api/public/products?owner=3' });
+  }
+
   try {
     const { rows } = await pool.query(
       `SELECT
@@ -321,7 +331,9 @@ app.get('/api/public/products', async (req, res) => {
         price,
         image_url AS "imageUrl"
       FROM products
-      ORDER BY name ASC`
+      WHERE owner_id = $1
+      ORDER BY name ASC`,
+      [ownerId]
     );
 
     res.json({ fallback: false, products: rows });
@@ -394,6 +406,7 @@ app.put('/api/products/:id', authenticate, async (req, res) => {
     }
   });
 
+  values.push(req.user.id);
   values.push(id);
 
   try {
@@ -401,7 +414,8 @@ app.put('/api/products/:id', authenticate, async (req, res) => {
       `UPDATE products
        SET ${updates.join(', ')},
            updated_at = NOW()
-       WHERE id = $${position}
+       WHERE owner_id = $${position}
+         AND id = $${position + 1}
        RETURNING
          id,
          name,
@@ -434,8 +448,8 @@ app.delete('/api/products/:id', authenticate, async (req, res) => {
 
   try {
     const { rowCount } = await pool.query(
-      'DELETE FROM products WHERE id = $1',
-      [id]
+      'DELETE FROM products WHERE owner_id = $1 AND id = $2',
+      [req.user.id, id]
     );
 
     if (rowCount === 0) {

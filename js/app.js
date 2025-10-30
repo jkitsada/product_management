@@ -1,4 +1,4 @@
-import { products as fallbackProducts } from "./data.js";
+const fallbackProducts = [];
 
 const TOKEN_KEY = "pm_token";
 
