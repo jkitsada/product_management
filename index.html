@@ -161,6 +161,36 @@
                       required
                     />
                   </label>
+                  <label class="file-field">
+                    รูปสินค้า
+                    <div class="file-field__control">
+                      <button class="btn btn-ghost" type="button" id="imageUploadButton">
+                        อัปโหลดรูป
+                      </button>
+                      <button
+                        class="btn btn-ghost file-field__clear hidden"
+                        type="button"
+                        id="imageClearButton"
+                      >
+                        ลบรูป
+                      </button>
+                      <span class="file-field__filename" id="imageFileName">
+                        ยังไม่ได้เลือกรูป
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      id="productImageFile"
+                      accept="image/*"
+                      class="file-field__input"
+                    />
+                    <input type="hidden" name="imageUrl" id="productImageUrl" />
+                    <div class="file-field__preview" id="productImagePreview">
+                      <span class="file-field__placeholder">
+                        รูปตัวอย่างจะแสดงที่นี่
+                      </span>
+                    </div>
+                  </label>
                 </div>
                 <div class="form-actions">
                   <button

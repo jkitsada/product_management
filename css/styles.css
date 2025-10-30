@@ -197,6 +197,64 @@ body {
   box-shadow: 0 12px 18px -15px rgba(37, 99, 235, 0.8);
 }
 
+.file-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.file-field__control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.file-field__input {
+  display: none;
+}
+
+.file-field__filename {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.file-field__clear {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--danger);
+}
+
+.file-field__clear:hover {
+  background: rgba(220, 38, 38, 0.22);
+}
+
+.file-field__preview {
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 14px;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.file-field__preview.has-image {
+  border-style: solid;
+}
+
+.file-field__placeholder {
+  color: var(--muted);
+  font-size: 0.9rem;
+  transition: opacity 0.2s ease;
+}
+
+.file-field__preview.has-image .file-field__placeholder {
+  opacity: 0;
+}
+
 .auth-field {
   display: flex;
   flex-direction: column;

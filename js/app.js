@@ -32,6 +32,15 @@ const productStockInput = document.querySelector("#productStock");
 const productUnitInput = document.querySelector("#productUnit");
 const productReorderInput = document.querySelector("#productReorder");
 const productPriceInput = document.querySelector("#productPrice");
+const productImageUrlInput = document.querySelector("#productImageUrl");
+const productImageFileInput = document.querySelector("#productImageFile");
+const imageUploadButton = document.querySelector("#imageUploadButton");
+const imageClearButton = document.querySelector("#imageClearButton");
+const imageFileName = document.querySelector("#imageFileName");
+const imagePreview = document.querySelector("#productImagePreview");
+const imagePreviewPlaceholder = document.querySelector(
+  "#productImagePreview .file-field__placeholder"
+);
 const submitButton = document.querySelector("#submitButton");
 const cancelEditButton = document.querySelector("#cancelEditButton");
 const formHeading = document.querySelector("#formHeading");
@@ -140,6 +149,61 @@ const setManagementNotice = (message) => {
   }
 };
 
+const resetImageField = () => {
+  if (productImageUrlInput) {
+    productImageUrlInput.value = "";
+  }
+  if (productImageFileInput) {
+    productImageFileInput.value = "";
+  }
+  if (imageFileName) {
+    imageFileName.textContent = "ยังไม่ได้เลือกรูป";
+  }
+  if (imagePreview) {
+    imagePreview.style.backgroundImage = "";
+    imagePreview.classList.remove("has-image");
+  }
+  if (imageClearButton) {
+    imageClearButton.classList.add("hidden");
+  }
+};
+
+const setImagePreview = (url, displayName) => {
+  if (!imagePreview || !imageFileName) {
+    return;
+  }
+
+  if (!url) {
+    resetImageField();
+    return;
+  }
+
+  imagePreview.style.backgroundImage = `url('${url}')`;
+  imagePreview.classList.add("has-image");
+  imageFileName.textContent = displayName || "แสดงรูปตัวอย่าง";
+  if (imageClearButton) {
+    imageClearButton.classList.remove("hidden");
+  }
+};
+
+const handleImageFileChange = () => {
+  if (!productImageFileInput || !productImageFileInput.files?.length) {
+    resetImageField();
+    return;
+  }
+
+  const file = productImageFileInput.files[0];
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = reader.result?.toString() || "";
+    if (productImageUrlInput) {
+      productImageUrlInput.value = result;
+    }
+    setImagePreview(result, file.name);
+  };
+  reader.readAsDataURL(file);
+};
+
 const setFormEnabled = (enabled) => {
   const controls = productForm?.querySelectorAll("input, button[type='submit']");
   controls?.forEach((control) => {
@@ -160,6 +224,7 @@ const resetForm = () => {
   if (productIdInput) {
     productIdInput.disabled = false;
   }
+  resetImageField();
   submitButton.textContent = "เพิ่มสินค้า";
   cancelEditButton.classList.add("hidden");
   formHeading.textContent = "เพิ่มสินค้าใหม่";
@@ -177,6 +242,14 @@ const populateForm = (product) => {
   productUnitInput.value = product.unit;
   productReorderInput.value = product.reorderPoint;
   productPriceInput.value = product.price;
+  if (productImageUrlInput) {
+    productImageUrlInput.value = product.imageUrl || "";
+  }
+  if (product.imageUrl) {
+    setImagePreview(product.imageUrl, "รูปปัจจุบัน");
+  } else {
+    resetImageField();
+  }
 };
 
 const buildSummaryCards = (products) => {
@@ -433,6 +506,7 @@ const handleSubmit = async (event) => {
     unit: formData.get("unit")?.trim(),
     reorderPoint: Number(formData.get("reorderPoint")),
     price: Number(formData.get("price")),
+    imageUrl: formData.get("imageUrl")?.trim() || null,
   };
 
   if (!state.editingId) {
@@ -599,6 +673,19 @@ const bootstrap = () => {
   }
 
   state.authToken = token;
+
+  imageUploadButton?.addEventListener("click", () => {
+    productImageFileInput?.click();
+  });
+
+  productImageFileInput?.addEventListener("change", handleImageFileChange);
+
+  imageClearButton?.addEventListener("click", () => {
+    resetImageField();
+    if (productImageUrlInput) {
+      productImageUrlInput.value = "";
+    }
+  });
 
   logoutButton?.addEventListener("click", () => {
     redirectToLogin();
