@@ -8,6 +8,7 @@ const state = {
   editingId: null,
   authToken: null,
   currentUser: null,
+  uploadConfig: { cloudinary: null },
 };
 
 const views = document.querySelectorAll("[data-view]");
@@ -38,9 +39,6 @@ const imageUploadButton = document.querySelector("#imageUploadButton");
 const imageClearButton = document.querySelector("#imageClearButton");
 const imageFileName = document.querySelector("#imageFileName");
 const imagePreview = document.querySelector("#productImagePreview");
-const imagePreviewPlaceholder = document.querySelector(
-  "#productImagePreview .file-field__placeholder"
-);
 const submitButton = document.querySelector("#submitButton");
 const cancelEditButton = document.querySelector("#cancelEditButton");
 const formHeading = document.querySelector("#formHeading");
@@ -149,6 +147,21 @@ const setManagementNotice = (message) => {
   }
 };
 
+const loadAppConfig = async () => {
+  try {
+    const response = await fetch("/api/config");
+    if (!response.ok) {
+      throw new Error(`Config request failed with status ${response.status}`);
+    }
+
+    const config = await response.json();
+    state.uploadConfig = config || {};
+  } catch (error) {
+    console.error("Failed to load app config:", error);
+    state.uploadConfig = {};
+  }
+};
+
 const resetImageField = () => {
   if (productImageUrlInput) {
     productImageUrlInput.value = "";
@@ -186,22 +199,84 @@ const setImagePreview = (url, displayName) => {
   }
 };
 
-const handleImageFileChange = () => {
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result?.toString() || "");
+    reader.onerror = () => reject(reader.error || new Error("อ่านไฟล์ไม่สำเร็จ"));
+    reader.readAsDataURL(file);
+  });
+
+const uploadImageToCloudinary = async (file) => {
+  const cloudinary = state.uploadConfig?.cloudinary;
+  if (!cloudinary?.cloudName || !cloudinary?.uploadPreset) {
+    return null;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", cloudinary.uploadPreset);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudinary.cloudName}/image/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("อัปโหลดรูปไม่สำเร็จ");
+  }
+
+  const payload = await response.json();
+  return payload.secure_url;
+};
+
+const handleImageFileChange = async () => {
   if (!productImageFileInput || !productImageFileInput.files?.length) {
     resetImageField();
     return;
   }
 
   const file = productImageFileInput.files[0];
-  const reader = new FileReader();
-  reader.onload = () => {
-    const result = reader.result?.toString() || "";
-    if (productImageUrlInput) {
-      productImageUrlInput.value = result;
+
+  try {
+    setFormMessage("กำลังประมวลผลรูปภาพ...", "neutral");
+
+    let imageUrl = null;
+    let usedCloudinary = false;
+    try {
+      imageUrl = await uploadImageToCloudinary(file);
+      usedCloudinary = Boolean(imageUrl);
+    } catch (error) {
+      console.warn("Cloudinary upload failed, falling back to Base64", error);
+      imageUrl = null;
     }
-    setImagePreview(result, file.name);
-  };
-  reader.readAsDataURL(file);
+
+    if (!imageUrl) {
+      if (file.size > 512 * 1024) {
+        setFormMessage(
+          "ไฟล์มีขนาดใหญ่ อาจทำให้การบันทึกช้าหรือไม่สำเร็จ กรุณาตั้งค่า Cloudinary เพื่ออัปโหลดได้สะดวก",
+          "error"
+        );
+      } else {
+        setFormMessage("ใช้รูปจากเครื่องโดยตรง (Base64)", "neutral");
+      }
+      imageUrl = await readFileAsDataUrl(file);
+    } else if (usedCloudinary) {
+      setFormMessage("อัปโหลดรูปเรียบร้อยแล้ว", "success");
+    }
+
+    if (productImageUrlInput) {
+      productImageUrlInput.value = imageUrl;
+    }
+    setImagePreview(imageUrl, file.name);
+  } catch (error) {
+    console.error("Image processing failed:", error);
+    setFormMessage("จัดการรูปภาพไม่สำเร็จ กรุณาลองใหม่", "error");
+    resetImageField();
+  }
 };
 
 const setFormEnabled = (enabled) => {
@@ -666,7 +741,7 @@ const showView = (target) => {
   });
 };
 
-const bootstrap = () => {
+const bootstrap = async () => {
   const token = requireToken();
   if (!token) {
     return;
@@ -674,11 +749,15 @@ const bootstrap = () => {
 
   state.authToken = token;
 
+  await loadAppConfig();
+
   imageUploadButton?.addEventListener("click", () => {
     productImageFileInput?.click();
   });
 
-  productImageFileInput?.addEventListener("change", handleImageFileChange);
+  productImageFileInput?.addEventListener("change", () => {
+    handleImageFileChange();
+  });
 
   imageClearButton?.addEventListener("click", () => {
     resetImageField();
@@ -691,24 +770,22 @@ const bootstrap = () => {
     redirectToLogin();
   });
 
-  fetch("/api/auth/me", {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        throw new Error("unauthorized");
-      }
-      return response.json();
-    })
-    .then(({ user }) => {
-      state.currentUser = user;
-      if (currentUserEmail) {
-        currentUserEmail.textContent = user.email;
-      }
-    })
-    .catch(() => {
-      redirectToLogin();
+  try {
+    const meResponse = await fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
     });
+    if (!meResponse.ok) {
+      throw new Error("unauthorized");
+    }
+    const { user } = await meResponse.json();
+    state.currentUser = user;
+    if (currentUserEmail) {
+      currentUserEmail.textContent = user.email;
+    }
+  } catch (error) {
+    redirectToLogin();
+    return;
+  }
 
   navButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -727,7 +804,7 @@ const bootstrap = () => {
   cancelEditButton.addEventListener("click", handleCancelEdit);
   allProductsTable.addEventListener("click", handleTableClick);
 
-  refreshProducts();
+  await refreshProducts();
 };
 
 bootstrap();
