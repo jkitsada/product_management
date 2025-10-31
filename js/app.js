@@ -16,6 +16,7 @@ const views = document.querySelectorAll("[data-view]");
 const navButtons = document.querySelectorAll("[data-view-target]");
 const logoutButton = document.querySelector("#logoutButton");
 const currentUserEmail = document.querySelector("#currentUserEmail");
+const customerLink = document.querySelector("#customerViewLink");
 
 const summaryGrid = document.querySelector("#summaryGrid");
 const lowStockTable = document.querySelector("#lowStockTable");
@@ -884,6 +885,16 @@ const bootstrap = async () => {
 
   generateShareLinkButton?.addEventListener("click", generateShareLink);
   copyShareLinkButton?.addEventListener("click", copyShareLink);
+
+  if (customerLink) {
+    customerLink.addEventListener("click", (event) => {
+      if (state.shareLink?.url) {
+        customerLink.href = state.shareLink.url;
+      } else {
+        customerLink.href = "/customer";
+      }
+    });
+  }
 
   logoutButton?.addEventListener("click", () => {
     redirectToLogin();

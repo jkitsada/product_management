@@ -13,7 +13,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const shareToken = tokenFromPath ? tokenFromPath[1] : urlParams.get("token");
 const shareUrl = shareToken
   ? `${window.location.origin}/customer/${shareToken}`
-  : window.location.href;
+  : `${window.location.origin}/customer`;
 
 const state = {
   source: "loading",
