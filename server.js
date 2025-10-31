@@ -3,6 +3,7 @@ const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 require('dotenv').config();
 
@@ -41,6 +42,15 @@ const ensureDatabase = (res) => {
   return true;
 };
 
+const getBaseUrl = (req) => {
+  const host = req.get('host');
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const protocol = forwardedProto
+    ? forwardedProto.split(',')[0].trim()
+    : req.protocol;
+  return `${protocol}://${host}`;
+};
+
 const generateToken = (user) => {
   if (!JWT_SECRET) {
     throw new Error('JWT secret is not configured');
@@ -54,6 +64,71 @@ const generateToken = (user) => {
     JWT_SECRET,
     { expiresIn: '12h' }
   );
+};
+
+const SHARE_TOKEN_TTL_MINUTES = 5;
+
+const generateShareTokenValue = () => crypto.randomBytes(16).toString('hex');
+
+const getActiveShareToken = async (userId) => {
+  const { rows } = await pool.query(
+    `SELECT token, expires_at
+     FROM share_tokens
+     WHERE user_id = $1
+       AND is_active = TRUE
+       AND expires_at > NOW()
+     ORDER BY expires_at DESC
+     LIMIT 1`,
+    [userId]
+  );
+
+  return rows[0] || null;
+};
+
+const createShareTokenForUser = async (userId, durationMinutes = SHARE_TOKEN_TTL_MINUTES) => {
+  const tokenValue = generateShareTokenValue();
+  const { rows } = await pool.query(
+    `INSERT INTO share_tokens (user_id, token, expires_at)
+     VALUES ($1, $2, NOW() + ($3::text || ' minutes')::INTERVAL)
+     RETURNING token, expires_at` ,
+    [userId, tokenValue, durationMinutes]
+  );
+
+  await pool.query(
+    `UPDATE share_tokens
+     SET is_active = FALSE
+     WHERE user_id = $1 AND token <> $2`,
+    [userId, tokenValue]
+  );
+
+  return rows[0];
+};
+
+const resolveShareToken = async (tokenValue) => {
+  const { rows } = await pool.query(
+    `SELECT user_id, expires_at, is_active
+     FROM share_tokens
+     WHERE token = $1
+     LIMIT 1`,
+    [tokenValue]
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const record = rows[0];
+  if (!record.is_active || new Date(record.expires_at) <= new Date()) {
+    if (record.is_active) {
+      await pool.query(
+        `UPDATE share_tokens SET is_active = FALSE WHERE token = $1`,
+        [tokenValue]
+      );
+    }
+    return null;
+  }
+
+  return record.user_id;
 };
 
 const authenticate = async (req, res, next) => {
@@ -114,6 +189,59 @@ app.get('/api/config', (req, res) => {
           }
         : null,
   });
+});
+
+app.get('/api/share-links/current', authenticate, async (req, res) => {
+  if (!ensureDatabase(res)) {
+    return;
+  }
+
+  try {
+    const active = await getActiveShareToken(req.user.id);
+    if (!active) {
+      return res.json({ shareLink: null });
+    }
+
+    const baseUrl = getBaseUrl(req);
+    const shareUrl = `${baseUrl}/customer/${active.token}`;
+
+    res.json({
+      shareLink: {
+        token: active.token,
+        expiresAt: active.expires_at,
+        url: shareUrl,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching share link:', error);
+    res.status(500).json({ message: 'ไม่สามารถดึงลิงก์แชร์ได้' });
+  }
+});
+
+app.post('/api/share-links', authenticate, async (req, res) => {
+  if (!ensureDatabase(res)) {
+    return;
+  }
+
+  const durationMinutes = Number((req.body && req.body.durationMinutes) || 0) || SHARE_TOKEN_TTL_MINUTES;
+  const ttl = Math.max(1, Math.min(durationMinutes, 60));
+
+  try {
+    const shareRecord = await createShareTokenForUser(req.user.id, ttl);
+    const baseUrl = getBaseUrl(req);
+    const shareUrl = `${baseUrl}/customer/${shareRecord.token}`;
+
+    res.status(201).json({
+      shareLink: {
+        token: shareRecord.token,
+        expiresAt: shareRecord.expires_at,
+        url: shareUrl,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating share link:', error);
+    res.status(500).json({ message: 'ไม่สามารถสร้างลิงก์แชร์ได้' });
+  }
 });
 
 app.post('/api/auth/signup', async (req, res) => {
@@ -328,19 +456,22 @@ app.post('/api/products', authenticate, async (req, res) => {
   }
 });
 
-app.get('/api/public/products', async (req, res) => {
+app.get('/api/public/products/:token', async (req, res) => {
   if (!pool) {
     return res.status(200).json({ fallback: true, products: [] });
   }
 
-  const ownerId = req.query.owner ? Number(req.query.owner) : null;
-  if (!ownerId) {
-    return res
-      .status(400)
-      .json({ message: 'ต้องระบุ owner parameter เช่น /api/public/products?owner=3' });
+  const tokenValue = req.params.token;
+  if (!tokenValue) {
+    return res.status(400).json({ message: 'แชร์โทเค็นไม่ถูกต้อง' });
   }
 
   try {
+    const ownerId = await resolveShareToken(tokenValue);
+    if (!ownerId) {
+      return res.status(404).json({ message: 'ลิงก์นี้หมดอายุหรือไม่ถูกต้อง' });
+    }
+
     const { rows } = await pool.query(
       `SELECT
         id,
@@ -485,6 +616,10 @@ app.delete('/api/products/:id', authenticate, async (req, res) => {
 });
 
 app.get('/customer', (req, res) => {
+  res.sendFile(path.join(__dirname, 'customer.html'));
+});
+
+app.get('/customer/:token', (req, res) => {
   res.sendFile(path.join(__dirname, 'customer.html'));
 });
 

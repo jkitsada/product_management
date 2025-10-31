@@ -39,7 +39,13 @@ toggleButtons.forEach((button) => {
 });
 
 const redirectToApp = () => {
-  window.location.replace("/");
+  const params = new URLSearchParams(window.location.search);
+  const redirect = params.get("redirect");
+  if (redirect) {
+    window.location.replace(redirect);
+  } else {
+    window.location.replace("/");
+  }
 };
 
 const submitAuth = async (event) => {

@@ -81,6 +81,26 @@
             <span class="badge" id="dataSourceIndicator">กำลังเชื่อมต่อ...</span>
           </div>
           <div class="management-grid">
+            <article class="card share-card">
+              <div class="share-card__header">
+                <h3>แชร์หน้าสินค้าให้ลูกค้า</h3>
+                <p class="hint" id="shareNotice">
+                  กดสร้างลิงก์เพื่อส่งให้ลูกค้า ลิงก์จะหมดอายุอัตโนมัติภายใน 5 นาที
+                </p>
+              </div>
+              <div class="share-card__link" id="shareLinkDisplay">
+                ยังไม่มีลิงก์สำหรับแชร์
+              </div>
+              <div class="share-card__meta" id="shareExpiryDisplay"></div>
+              <div class="share-card__actions">
+                <button class="btn btn-primary" type="button" id="generateShareLinkButton">
+                  สร้างลิงก์ใหม่
+                </button>
+                <button class="btn btn-ghost" type="button" id="copyShareLinkButton" disabled>
+                  คัดลอกลิงก์
+                </button>
+              </div>
+            </article>
             <article class="card form-card">
               <div class="form-header">
                 <h3 id="formHeading">เพิ่มสินค้าใหม่</h3>

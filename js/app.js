@@ -9,6 +9,7 @@ const state = {
   authToken: null,
   currentUser: null,
   uploadConfig: { cloudinary: null },
+  shareLink: null,
 };
 
 const views = document.querySelectorAll("[data-view]");
@@ -39,6 +40,11 @@ const imageUploadButton = document.querySelector("#imageUploadButton");
 const imageClearButton = document.querySelector("#imageClearButton");
 const imageFileName = document.querySelector("#imageFileName");
 const imagePreview = document.querySelector("#productImagePreview");
+const shareLinkDisplay = document.querySelector("#shareLinkDisplay");
+const shareExpiryDisplay = document.querySelector("#shareExpiryDisplay");
+const shareNotice = document.querySelector("#shareNotice");
+const generateShareLinkButton = document.querySelector("#generateShareLinkButton");
+const copyShareLinkButton = document.querySelector("#copyShareLinkButton");
 const submitButton = document.querySelector("#submitButton");
 const cancelEditButton = document.querySelector("#cancelEditButton");
 const formHeading = document.querySelector("#formHeading");
@@ -159,6 +165,116 @@ const loadAppConfig = async () => {
   } catch (error) {
     console.error("Failed to load app config:", error);
     state.uploadConfig = {};
+  }
+};
+
+const formatDateTime = (value) => {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  return date.toLocaleString("th-TH", {
+    hour12: false,
+  });
+};
+
+const updateShareLinkUI = () => {
+  const link = state.shareLink;
+  if (!shareLinkDisplay || !shareExpiryDisplay || !copyShareLinkButton) {
+    return;
+  }
+
+  if (!link) {
+    shareLinkDisplay.textContent = "ยังไม่มีลิงก์สำหรับแชร์";
+    shareExpiryDisplay.textContent = "";
+    copyShareLinkButton.disabled = true;
+    if (shareNotice) {
+      shareNotice.textContent =
+        "กดสร้างลิงก์เพื่อส่งให้ลูกค้า ลิงก์จะหมดอายุอัตโนมัติภายใน 5 นาที";
+    }
+    return;
+  }
+
+  shareLinkDisplay.textContent = link.url;
+  copyShareLinkButton.disabled = false;
+  shareExpiryDisplay.textContent = `ลิงก์หมดอายุ ${formatDateTime(link.expiresAt)}`;
+  if (shareNotice) {
+    shareNotice.textContent = "คัดลอกหรือลิงก์แชร์ให้ลูกค้าได้ทันที";
+  }
+};
+
+const loadShareLink = async () => {
+  try {
+    const response = await fetch("/api/share-links/current", {
+      headers: { Authorization: `Bearer ${state.authToken}` },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Share link request failed with status ${response.status}`);
+    }
+
+    const payload = await response.json();
+    state.shareLink = payload.shareLink;
+    updateShareLinkUI();
+  } catch (error) {
+    console.error("Unable to load share link:", error);
+    state.shareLink = null;
+    updateShareLinkUI();
+  }
+};
+
+const generateShareLink = async () => {
+  if (!generateShareLinkButton) {
+    return;
+  }
+
+  generateShareLinkButton.disabled = true;
+  setFormMessage("กำลังสร้างลิงก์แชร์...", "neutral");
+
+  try {
+    const response = await fetch("/api/share-links", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${state.authToken}`,
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        redirectToLogin();
+        return;
+      }
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(errorBody.message || "ไม่สามารถสร้างลิงก์แชร์ได้");
+    }
+
+    const payload = await response.json();
+    state.shareLink = payload.shareLink;
+    updateShareLinkUI();
+    setFormMessage("สร้างลิงก์แชร์เรียบร้อยแล้ว", "success");
+  } catch (error) {
+    console.error("Generate share link error:", error);
+    setFormMessage(error.message, "error");
+  } finally {
+    generateShareLinkButton.disabled = false;
+  }
+};
+
+const copyShareLink = async () => {
+  const link = state.shareLink;
+  if (!link) {
+    setFormMessage("ยังไม่มีลิงก์สำหรับคัดลอก", "error");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(link.url);
+    setFormMessage("คัดลอกลิงก์แชร์แล้ว", "success");
+  } catch (error) {
+    console.error("Copy link failed:", error);
+    window.prompt("คัดลอกลิงก์นี้ด้วยตัวเอง", link.url);
   }
 };
 
@@ -766,6 +882,9 @@ const bootstrap = async () => {
     }
   });
 
+  generateShareLinkButton?.addEventListener("click", generateShareLink);
+  copyShareLinkButton?.addEventListener("click", copyShareLink);
+
   logoutButton?.addEventListener("click", () => {
     redirectToLogin();
   });
@@ -786,6 +905,8 @@ const bootstrap = async () => {
     redirectToLogin();
     return;
   }
+
+  await loadShareLink();
 
   navButtons.forEach((button) => {
     button.addEventListener("click", () => {
